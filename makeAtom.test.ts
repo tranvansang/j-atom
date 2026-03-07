@@ -33,7 +33,7 @@ describe('makeAtom', () => {
 		const atom = makeAtom('initial')
 		const subscriber = vi.fn()
 
-		atom.sub(subscriber)
+		atom.sub(subscriber, { defer: true })
 
 		atom.value = 'updated'
 		expect(subscriber).toHaveBeenCalledTimes(1)
@@ -50,9 +50,9 @@ describe('makeAtom', () => {
 		const sub2 = vi.fn()
 		const sub3 = vi.fn()
 
-		atom.sub(sub1)
-		atom.sub(sub2)
-		atom.sub(sub3)
+		atom.sub(sub1, { defer: true })
+		atom.sub(sub2, { defer: true })
+		atom.sub(sub3, { defer: true })
 
 		atom.value = 1
 
@@ -65,7 +65,7 @@ describe('makeAtom', () => {
 		const atom = makeAtom('test')
 		const subscriber = vi.fn()
 
-		const unsub = atom.sub(subscriber)
+		const unsub = atom.sub(subscriber, { defer: true })
 
 		atom.value = 'first'
 		expect(subscriber).toHaveBeenCalledTimes(1)
@@ -76,11 +76,11 @@ describe('makeAtom', () => {
 		expect(subscriber).toHaveBeenCalledTimes(1) // Not called again
 	})
 
-	test('subscriber with now option', () => {
+	test('subscriber is called immediately by default', () => {
 		const atom = makeAtom(100)
 		const subscriber = vi.fn()
 
-		atom.sub(subscriber, { now: true })
+		atom.sub(subscriber)
 
 		// Should be called immediately with current value
 		expect(subscriber).toHaveBeenCalledTimes(1)
@@ -91,12 +91,26 @@ describe('makeAtom', () => {
 		expect(subscriber).toHaveBeenCalledWith(200, 100)
 	})
 
+	test('subscriber with defer option', () => {
+		const atom = makeAtom(100)
+		const subscriber = vi.fn()
+
+		atom.sub(subscriber, { defer: true })
+
+		// Should NOT be called immediately
+		expect(subscriber).not.toHaveBeenCalled()
+
+		atom.value = 200
+		expect(subscriber).toHaveBeenCalledTimes(1)
+		expect(subscriber).toHaveBeenCalledWith(200, 100)
+	})
+
 	test('subscriber with skip option', () => {
 		const atom = makeAtom(0)
 		const subscriber = vi.fn()
 
 		// Skip even numbers
-		atom.sub(subscriber, { skip: (newVal) => newVal % 2 === 0 })
+		atom.sub(subscriber, { defer: true, skip: (newVal) => newVal % 2 === 0 })
 
 		atom.value = 2
 		expect(subscriber).not.toHaveBeenCalled() // Skipped
@@ -113,13 +127,12 @@ describe('makeAtom', () => {
 		expect(subscriber).toHaveBeenCalledWith(5, 4)
 	})
 
-	test('subscriber with both now and skip options', () => {
+	test('subscriber with both immediate call and skip options', () => {
 		const atom = makeAtom(10)
 		const subscriber = vi.fn()
 
 		// Skip values less than 15
 		atom.sub(subscriber, {
-			now: true,
 			skip: (newVal) => newVal < 15
 		})
 
@@ -143,7 +156,7 @@ describe('makeAtom', () => {
 		const cleanup = vi.fn()
 		const subscriber = vi.fn(() => cleanup)
 
-		atom.sub(subscriber)
+		atom.sub(subscriber, { defer: true })
 
 		atom.value = 'first'
 		expect(subscriber).toHaveBeenCalledTimes(1)
@@ -163,7 +176,7 @@ describe('makeAtom', () => {
 		const cleanup = vi.fn()
 		const subscriber = vi.fn(() => cleanup)
 
-		const unsub = atom.sub(subscriber)
+		const unsub = atom.sub(subscriber, { defer: true })
 
 		atom.value = 1
 		expect(cleanup).not.toHaveBeenCalled()
@@ -180,7 +193,7 @@ describe('makeAtom', () => {
 		const atom = makeAtom({ count: 0 })
 		const subscriber = vi.fn()
 
-		atom.sub(subscriber)
+		atom.sub(subscriber, { defer: true })
 
 		const obj = { count: 1 }
 		atom.value = obj
@@ -196,7 +209,7 @@ describe('makeAtom', () => {
 		const atom = makeAtom<string | null | undefined>('initial')
 		const subscriber = vi.fn()
 
-		atom.sub(subscriber)
+		atom.sub(subscriber, { defer: true })
 
 		atom.value = null
 		expect(subscriber).toHaveBeenCalledWith(null, 'initial')
@@ -215,9 +228,9 @@ describe('makeAtom', () => {
 		const atom = makeAtom(0)
 		const callOrder: number[] = []
 
-		atom.sub(() => { callOrder.push(1) })
-		atom.sub(() => { callOrder.push(2) })
-		atom.sub(() => { callOrder.push(3) })
+		atom.sub(() => { callOrder.push(1) }, { defer: true })
+		atom.sub(() => { callOrder.push(2) }, { defer: true })
+		atom.sub(() => { callOrder.push(3) }, { defer: true })
 
 		atom.value = 1
 
@@ -236,8 +249,8 @@ describe('makeAtom', () => {
 		})
 		const subscriber2 = vi.fn()
 
-		atom.sub(subscriber1)
-		atom.sub(subscriber2)
+		atom.sub(subscriber1, { defer: true })
+		atom.sub(subscriber2, { defer: true })
 
 		atom.value = 1
 
@@ -270,7 +283,7 @@ describe('makeAtom', () => {
 			}
 		})
 
-		unsub = atom.sub(subscriber)
+		unsub = atom.sub(subscriber, { defer: true })
 
 		atom.value = 1
 		expect(subscriber).toHaveBeenCalledTimes(1)
@@ -291,9 +304,9 @@ describe('makeAtom', () => {
 		})
 		const sub3 = vi.fn()
 
-		atom.sub(sub1)
-		atom.sub(sub2)
-		atom.sub(sub3)
+		atom.sub(sub1, { defer: true })
+		atom.sub(sub2, { defer: true })
+		atom.sub(sub3, { defer: true })
 
 		// The error will propagate and stop iteration
 		expect(() => atom.value = 'updated').toThrow('Subscriber error')
@@ -317,7 +330,7 @@ describe('makeAtom', () => {
 			return newVal - oldVal < 5
 		})
 
-		atom.sub(subscriber, { skip: skipFn })
+		atom.sub(subscriber, { defer: true, skip: skipFn })
 
 		atom.value = 12
 		expect(skipFn).toHaveBeenCalledWith(12, 10)
@@ -340,8 +353,8 @@ describe('makeAtom', () => {
 		const sub1 = vi.fn()
 		const sub2 = vi.fn()
 
-		atom1.sub(sub1)
-		atom2.sub(sub2)
+		atom1.sub(sub1, { defer: true })
+		atom2.sub(sub2, { defer: true })
 
 		atom1.value = 'a-updated'
 		expect(sub1).toHaveBeenCalledWith('a-updated', 'a')
@@ -359,7 +372,7 @@ describe('makeAtom', () => {
 		})
 
 		const subscriber = vi.fn()
-		atom.sub(subscriber)
+		atom.sub(subscriber, { defer: true })
 
 		const newValue = {
 			users: [{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }],

@@ -69,7 +69,7 @@ describe('useAtom', () => {
 
 			function useTestAtom(atom: Atom<number>) {
 				const [state, setState] = useState(atom.value)
-				useEffect(() => atom.sub(setState), [atom])
+				useEffect(() => atom.sub(setState, { defer: true }), [atom])
 				return state
 			}
 
@@ -84,7 +84,7 @@ describe('useAtom', () => {
 
 			function useTestAtom(atom: Atom<number>) {
 				const [state, setState] = useState(atom.value)
-				useEffect(() => atom.sub(setState), [atom])
+				useEffect(() => atom.sub(setState, { defer: true }), [atom])
 				if (!inited) {
 					atom.value = 1
 					inited = true
@@ -101,7 +101,7 @@ describe('useAtom', () => {
 			function useTestAtom(atom: Atom<number>) {
 				const [state, setState, ref] = useRefState(atom.value)
 				useEffect(() => {
-					const unsub = atom.sub(setState)
+					const unsub = atom.sub(setState, { defer: true })
 					// value might be updated before the first effect
 					if (ref.current !== atom.value) setState(atom.value)
 					return unsub
@@ -178,7 +178,7 @@ describe('useAtom', () => {
 			function useTestAtom(atom: Atom<number>) {
 				cnt++
 				const [state, setState] = useState(atom.value)
-				useEffect(() => atom.sub(setState), [atom])
+				useEffect(() => atom.sub(setState, { defer: true }), [atom])
 				return state
 			}
 
