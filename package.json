@@ -1,6 +1,6 @@
 {
 	"name": "j-atom",
-	"version": "0.0.1",
+	"version": "0.1.0",
 	"scripts": {
 		"prepublishOnly": "npx tsc index.ts react.ts --lib esnext,dom --target esnext --declaration --skipLibCheck --moduleResolution bundler --module esnext",
 		"test": "vitest run *.test.ts",

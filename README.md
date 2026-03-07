@@ -30,8 +30,8 @@ const unsub3 = atom.sub((newVal) => {
   return () => window.removeEventListener('resize', handler)
 })
 
-// subscribe and run immediately
-const unsub4 = atom.sub((newVal, oldVal) => console.log(newVal, oldVal), {now: true})
+// subscribe without running immediately
+const unsub4 = atom.sub((newVal, oldVal) => console.log(newVal, oldVal), {defer: true})
 
 // subscribe with conditional updates
 const unsub5 = atom.sub(
@@ -51,5 +51,5 @@ unsub() // unsubscribe
 	- Returns unsubscribe function
 	- Subscriber receives `(newValue, oldValue)` and can return cleanup function
 	- Options:
-		- `now: boolean` - Call subscriber immediately with current value
+		- `defer: boolean` - If true, skip the immediate call with current value (default: false)
 		- `skip: (newVal, oldVal) => boolean` - Skip subscriber if returns true

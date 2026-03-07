@@ -3,7 +3,7 @@ export interface Atom<T> {
 	set value(val: T)
 	sub(
 		subscriber: (val: T, old?: T) => void | (() => void),
-		options?: {now?: boolean, skip?(val: T, old?: T): boolean}
+		options?: {defer?: boolean, skip?(val: T, old?: T): boolean}
 	): () => void
 }
 export function makeAtom<T>(): Atom<T | undefined>
@@ -33,12 +33,12 @@ export function makeAtom<T>(initial?: T | undefined) {
 		},
 		sub(
 			subscriber: (val: T, old?: T) => void | (() => void),
-			{now = false, skip}: {now?: boolean, skip?(val: T, old?: T): boolean} = {}
+			{defer = false, skip}: {defer?: boolean, skip?(val: T, old?: T): boolean} = {}
 		) {
 			const id = count++
 			subscribers[id] = {
 				subscriber,
-				cleanup: now && !skip?.(value, undefined) ? subscriber(value, undefined) : undefined,
+				cleanup: !defer && !skip?.(value, undefined) ? subscriber(value, undefined) : undefined,
 				skip,
 			}
 			return () => {
