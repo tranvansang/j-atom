@@ -1,5 +1,5 @@
 import {useState, useSyncExternalStore} from 'react'
-import type {Atom} from './index'
+import type {Atom} from './index.js'
 
 export function useAtom<T>(atom: Atom<T>) {
 	// useSyncExternalStore requires getServerSnapshot to return the same value

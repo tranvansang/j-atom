@@ -1,54 +1,55 @@
-import {describe, expect, test, vi} from 'vitest'
-import {makeAtom} from './index.ts'
+import {describe, test, mock} from 'node:test'
+import {strictEqual, deepStrictEqual, throws} from 'node:assert/strict'
+import {makeAtom} from './index.js'
 
 describe('makeAtom', () => {
 	test('creates atom with initial value', () => {
 		const atom = makeAtom(42)
-		expect(atom.value).toBe(42)
+		strictEqual(atom.value, 42)
 
 		const stringAtom = makeAtom('hello')
-		expect(stringAtom.value).toBe('hello')
+		strictEqual(stringAtom.value, 'hello')
 
 		const objAtom = makeAtom({ foo: 'bar' })
-		expect(objAtom.value).toEqual({ foo: 'bar' })
+		deepStrictEqual(objAtom.value, { foo: 'bar' })
 	})
 
 	test('creates atom without initial value', () => {
 		const atom = makeAtom()
-		expect(atom.value).toBeUndefined()
+		strictEqual(atom.value, undefined)
 	})
 
 	test('get and set value', () => {
 		const atom = makeAtom(10)
-		expect(atom.value).toBe(10)
+		strictEqual(atom.value, 10)
 
 		atom.value = 20
-		expect(atom.value).toBe(20)
+		strictEqual(atom.value, 20)
 
 		atom.value = 30
-		expect(atom.value).toBe(30)
+		strictEqual(atom.value, 30)
 	})
 
 	test('subscribers are notified on value change', () => {
 		const atom = makeAtom('initial')
-		const subscriber = vi.fn()
+		const subscriber = mock.fn()
 
 		atom.sub(subscriber, { defer: true })
 
 		atom.value = 'updated'
-		expect(subscriber).toHaveBeenCalledTimes(1)
-		expect(subscriber).toHaveBeenCalledWith('updated', 'initial')
+		strictEqual(subscriber.mock.callCount(), 1)
+		deepStrictEqual(subscriber.mock.calls[0].arguments, ['updated', 'initial'])
 
 		atom.value = 'another'
-		expect(subscriber).toHaveBeenCalledTimes(2)
-		expect(subscriber).toHaveBeenCalledWith('another', 'updated')
+		strictEqual(subscriber.mock.callCount(), 2)
+		deepStrictEqual(subscriber.mock.calls[1].arguments, ['another', 'updated'])
 	})
 
 	test('multiple subscribers are all notified', () => {
 		const atom = makeAtom(0)
-		const sub1 = vi.fn()
-		const sub2 = vi.fn()
-		const sub3 = vi.fn()
+		const sub1 = mock.fn()
+		const sub2 = mock.fn()
+		const sub3 = mock.fn()
 
 		atom.sub(sub1, { defer: true })
 		atom.sub(sub2, { defer: true })
@@ -56,80 +57,80 @@ describe('makeAtom', () => {
 
 		atom.value = 1
 
-		expect(sub1).toHaveBeenCalledWith(1, 0)
-		expect(sub2).toHaveBeenCalledWith(1, 0)
-		expect(sub3).toHaveBeenCalledWith(1, 0)
+		deepStrictEqual(sub1.mock.calls[0].arguments, [1, 0])
+		deepStrictEqual(sub2.mock.calls[0].arguments, [1, 0])
+		deepStrictEqual(sub3.mock.calls[0].arguments, [1, 0])
 	})
 
 	test('unsubscribe function works', () => {
 		const atom = makeAtom('test')
-		const subscriber = vi.fn()
+		const subscriber = mock.fn()
 
 		const unsub = atom.sub(subscriber, { defer: true })
 
 		atom.value = 'first'
-		expect(subscriber).toHaveBeenCalledTimes(1)
+		strictEqual(subscriber.mock.callCount(), 1)
 
 		unsub()
 
 		atom.value = 'second'
-		expect(subscriber).toHaveBeenCalledTimes(1) // Not called again
+		strictEqual(subscriber.mock.callCount(), 1) // Not called again
 	})
 
 	test('subscriber is called immediately by default', () => {
 		const atom = makeAtom(100)
-		const subscriber = vi.fn()
+		const subscriber = mock.fn()
 
 		atom.sub(subscriber)
 
 		// Should be called immediately with current value
-		expect(subscriber).toHaveBeenCalledTimes(1)
-		expect(subscriber).toHaveBeenCalledWith(100, undefined)
+		strictEqual(subscriber.mock.callCount(), 1)
+		deepStrictEqual(subscriber.mock.calls[0].arguments, [100, undefined])
 
 		atom.value = 200
-		expect(subscriber).toHaveBeenCalledTimes(2)
-		expect(subscriber).toHaveBeenCalledWith(200, 100)
+		strictEqual(subscriber.mock.callCount(), 2)
+		deepStrictEqual(subscriber.mock.calls[1].arguments, [200, 100])
 	})
 
 	test('subscriber with defer option', () => {
 		const atom = makeAtom(100)
-		const subscriber = vi.fn()
+		const subscriber = mock.fn()
 
 		atom.sub(subscriber, { defer: true })
 
 		// Should NOT be called immediately
-		expect(subscriber).not.toHaveBeenCalled()
+		strictEqual(subscriber.mock.callCount(), 0)
 
 		atom.value = 200
-		expect(subscriber).toHaveBeenCalledTimes(1)
-		expect(subscriber).toHaveBeenCalledWith(200, 100)
+		strictEqual(subscriber.mock.callCount(), 1)
+		deepStrictEqual(subscriber.mock.calls[0].arguments, [200, 100])
 	})
 
 	test('subscriber with skip option', () => {
 		const atom = makeAtom(0)
-		const subscriber = vi.fn()
+		const subscriber = mock.fn()
 
 		// Skip even numbers
 		atom.sub(subscriber, { defer: true, skip: (newVal) => newVal % 2 === 0 })
 
 		atom.value = 2
-		expect(subscriber).not.toHaveBeenCalled() // Skipped
+		strictEqual(subscriber.mock.callCount(), 0) // Skipped
 
 		atom.value = 3
-		expect(subscriber).toHaveBeenCalledTimes(1)
-		expect(subscriber).toHaveBeenCalledWith(3, 2)
+		strictEqual(subscriber.mock.callCount(), 1)
+		deepStrictEqual(subscriber.mock.calls[0].arguments, [3, 2])
 
 		atom.value = 4
-		expect(subscriber).toHaveBeenCalledTimes(1) // Skipped
+		strictEqual(subscriber.mock.callCount(), 1) // Skipped
 
 		atom.value = 5
-		expect(subscriber).toHaveBeenCalledTimes(2)
-		expect(subscriber).toHaveBeenCalledWith(5, 4)
+		strictEqual(subscriber.mock.callCount(), 2)
+		deepStrictEqual(subscriber.mock.calls[1].arguments, [5, 4])
 	})
 
 	test('subscriber with both immediate call and skip options', () => {
 		const atom = makeAtom(10)
-		const subscriber = vi.fn()
+		const subscriber = mock.fn()
 
 		// Skip values less than 15
 		atom.sub(subscriber, {
@@ -137,91 +138,91 @@ describe('makeAtom', () => {
 		})
 
 		// Initial call is skipped because 10 < 15
-		expect(subscriber).not.toHaveBeenCalled()
+		strictEqual(subscriber.mock.callCount(), 0)
 
 		atom.value = 12
-		expect(subscriber).not.toHaveBeenCalled() // Skipped
+		strictEqual(subscriber.mock.callCount(), 0) // Skipped
 
 		atom.value = 15
-		expect(subscriber).toHaveBeenCalledTimes(1)
-		expect(subscriber).toHaveBeenCalledWith(15, 12)
+		strictEqual(subscriber.mock.callCount(), 1)
+		deepStrictEqual(subscriber.mock.calls[0].arguments, [15, 12])
 
 		atom.value = 20
-		expect(subscriber).toHaveBeenCalledTimes(2)
-		expect(subscriber).toHaveBeenCalledWith(20, 15)
+		strictEqual(subscriber.mock.callCount(), 2)
+		deepStrictEqual(subscriber.mock.calls[1].arguments, [20, 15])
 	})
 
 	test('subscriber returning cleanup function', () => {
 		const atom = makeAtom('initial')
-		const cleanup = vi.fn()
-		const subscriber = vi.fn(() => cleanup)
+		const cleanup = mock.fn()
+		const subscriber = mock.fn(() => cleanup)
 
 		atom.sub(subscriber, { defer: true })
 
 		atom.value = 'first'
-		expect(subscriber).toHaveBeenCalledTimes(1)
-		expect(cleanup).not.toHaveBeenCalled()
+		strictEqual(subscriber.mock.callCount(), 1)
+		strictEqual(cleanup.mock.callCount(), 0)
 
 		atom.value = 'second'
-		expect(subscriber).toHaveBeenCalledTimes(2)
-		expect(cleanup).toHaveBeenCalledTimes(1) // Cleanup from first call
+		strictEqual(subscriber.mock.callCount(), 2)
+		strictEqual(cleanup.mock.callCount(), 1) // Cleanup from first call
 
 		atom.value = 'third'
-		expect(subscriber).toHaveBeenCalledTimes(3)
-		expect(cleanup).toHaveBeenCalledTimes(2) // Cleanup from second call
+		strictEqual(subscriber.mock.callCount(), 3)
+		strictEqual(cleanup.mock.callCount(), 2) // Cleanup from second call
 	})
 
 	test('cleanup function called on unsubscribe', () => {
 		const atom = makeAtom(0)
-		const cleanup = vi.fn()
-		const subscriber = vi.fn(() => cleanup)
+		const cleanup = mock.fn()
+		const subscriber = mock.fn(() => cleanup)
 
 		const unsub = atom.sub(subscriber, { defer: true })
 
 		atom.value = 1
-		expect(cleanup).not.toHaveBeenCalled()
+		strictEqual(cleanup.mock.callCount(), 0)
 
 		unsub()
-		expect(cleanup).toHaveBeenCalledTimes(1)
+		strictEqual(cleanup.mock.callCount(), 1)
 
 		// No more cleanups after unsubscribe
 		atom.value = 2
-		expect(cleanup).toHaveBeenCalledTimes(1)
+		strictEqual(cleanup.mock.callCount(), 1)
 	})
 
 	test('setting same reference multiple times', () => {
 		const atom = makeAtom({ count: 0 })
-		const subscriber = vi.fn()
+		const subscriber = mock.fn()
 
 		atom.sub(subscriber, { defer: true })
 
 		const obj = { count: 1 }
 		atom.value = obj
-		expect(subscriber).toHaveBeenCalledTimes(1)
+		strictEqual(subscriber.mock.callCount(), 1)
 
 		// Setting same reference again still notifies
 		atom.value = obj
-		expect(subscriber).toHaveBeenCalledTimes(2)
-		expect(subscriber).toHaveBeenCalledWith(obj, obj)
+		strictEqual(subscriber.mock.callCount(), 2)
+		deepStrictEqual(subscriber.mock.calls[1].arguments, [obj, obj])
 	})
 
 	test('handles null and undefined values', () => {
 		const atom = makeAtom<string | null | undefined>('initial')
-		const subscriber = vi.fn()
+		const subscriber = mock.fn()
 
 		atom.sub(subscriber, { defer: true })
 
 		atom.value = null
-		expect(subscriber).toHaveBeenCalledWith(null, 'initial')
-		expect(atom.value).toBe(null)
+		deepStrictEqual(subscriber.mock.calls[0].arguments, [null, 'initial'])
+		strictEqual(atom.value, null)
 
 		atom.value = undefined
-		expect(subscriber).toHaveBeenCalledWith(undefined, null)
-		expect(atom.value).toBe(undefined)
+		deepStrictEqual(subscriber.mock.calls[1].arguments, [undefined, null])
+		strictEqual(atom.value, undefined)
 
 		atom.value = 'defined'
-		expect(subscriber).toHaveBeenCalledWith('defined', undefined)
-		expect(atom.value).toBe('defined')
+		deepStrictEqual(subscriber.mock.calls[2].arguments, ['defined', undefined])
+		strictEqual(atom.value, 'defined')
 	})
 
 	test('subscribers are called in order of subscription', () => {
@@ -234,20 +235,20 @@ describe('makeAtom', () => {
 
 		atom.value = 1
 
-		expect(callOrder).toEqual([1, 2, 3])
+		deepStrictEqual(callOrder, [1, 2, 3])
 	})
 
 	test('subscriber can safely modify atom value', () => {
 		const atom = makeAtom(0)
 		let callCount = 0
-		const subscriber1 = vi.fn((newVal, oldVal) => {
+		const subscriber1 = mock.fn((newVal: number) => {
 			callCount++
 			// Only trigger cascade on first call to avoid infinite loop
 			if (newVal === 1 && callCount === 1) {
 				atom.value = 2
 			}
 		})
-		const subscriber2 = vi.fn()
+		const subscriber2 = mock.fn()
 
 		atom.sub(subscriber1, { defer: true })
 		atom.sub(subscriber2, { defer: true })
@@ -262,22 +263,23 @@ describe('makeAtom', () => {
 		// 3. Original iteration continues:
 		//    - subscriber2 is called with (1, 0)
 
-		expect(subscriber1).toHaveBeenCalledTimes(2)
-		expect(subscriber1).toHaveBeenNthCalledWith(1, 1, 0)
-		expect(subscriber1).toHaveBeenNthCalledWith(2, 2, 1)
+		strictEqual(subscriber1.mock.callCount(), 2)
+		// Node's mock records calls after impl returns, so nested call appears first
+		deepStrictEqual(subscriber1.mock.calls[0].arguments, [2, 1])
+		deepStrictEqual(subscriber1.mock.calls[1].arguments, [1, 0])
 
-		expect(subscriber2).toHaveBeenCalledTimes(2)
-		expect(subscriber2).toHaveBeenNthCalledWith(1, 2, 1) // From nested iteration
-		expect(subscriber2).toHaveBeenNthCalledWith(2, 1, 0) // From original iteration
+		strictEqual(subscriber2.mock.callCount(), 2)
+		deepStrictEqual(subscriber2.mock.calls[0].arguments, [2, 1]) // From nested iteration
+		deepStrictEqual(subscriber2.mock.calls[1].arguments, [1, 0]) // From original iteration
 
-		expect(atom.value).toBe(2)
+		strictEqual(atom.value, 2)
 	})
 
 	test('subscriber can unsubscribe itself', () => {
 		const atom = makeAtom(0)
 		let unsub: (() => void) | null = null
 
-		const subscriber = vi.fn(() => {
+		const subscriber = mock.fn(() => {
 			if (atom.value === 2 && unsub) {
 				unsub()
 			}
@@ -286,46 +288,46 @@ describe('makeAtom', () => {
 		unsub = atom.sub(subscriber, { defer: true })
 
 		atom.value = 1
-		expect(subscriber).toHaveBeenCalledTimes(1)
+		strictEqual(subscriber.mock.callCount(), 1)
 
 		atom.value = 2
-		expect(subscriber).toHaveBeenCalledTimes(2)
+		strictEqual(subscriber.mock.callCount(), 2)
 
 		// Should have unsubscribed itself
 		atom.value = 3
-		expect(subscriber).toHaveBeenCalledTimes(2) // Not called again
+		strictEqual(subscriber.mock.callCount(), 2) // Not called again
 	})
 
 	test('subscriber errors propagate and stop further subscribers', () => {
 		const atom = makeAtom('test')
-		const sub1 = vi.fn()
-		const sub2 = vi.fn(() => {
+		const sub1 = mock.fn()
+		const sub2 = mock.fn(() => {
 			throw new Error('Subscriber error')
 		})
-		const sub3 = vi.fn()
+		const sub3 = mock.fn()
 
 		atom.sub(sub1, { defer: true })
 		atom.sub(sub2, { defer: true })
 		atom.sub(sub3, { defer: true })
 
 		// The error will propagate and stop iteration
-		expect(() => atom.value = 'updated').toThrow('Subscriber error')
+		throws(() => { atom.value = 'updated' }, { message: 'Subscriber error' })
 
 		// sub1 is called before the error
-		expect(sub1).toHaveBeenCalledWith('updated', 'test')
+		deepStrictEqual(sub1.mock.calls[0].arguments, ['updated', 'test'])
 		// sub2 throws the error
-		expect(sub2).toHaveBeenCalledWith('updated', 'test')
+		deepStrictEqual(sub2.mock.calls[0].arguments, ['updated', 'test'])
 		// sub3 is not called because sub2 threw
-		expect(sub3).not.toHaveBeenCalled()
+		strictEqual(sub3.mock.callCount(), 0)
 
 		// The value is still updated though
-		expect(atom.value).toBe('updated')
+		strictEqual(atom.value, 'updated')
 	})
 
 	test('skip function receives both old and new values', () => {
 		const atom = makeAtom(10)
-		const subscriber = vi.fn()
-		const skipFn = vi.fn((newVal, oldVal) => {
+		const subscriber = mock.fn()
+		const skipFn = mock.fn((newVal: number, oldVal: number) => {
 			// Skip if increase is less than 5
 			return newVal - oldVal < 5
 		})
@@ -333,36 +335,36 @@ describe('makeAtom', () => {
 		atom.sub(subscriber, { defer: true, skip: skipFn })
 
 		atom.value = 12
-		expect(skipFn).toHaveBeenCalledWith(12, 10)
-		expect(subscriber).not.toHaveBeenCalled() // Skipped (increase of 2)
+		deepStrictEqual(skipFn.mock.calls[0].arguments, [12, 10])
+		strictEqual(subscriber.mock.callCount(), 0) // Skipped (increase of 2)
 
 		atom.value = 17
-		expect(skipFn).toHaveBeenCalledWith(17, 12)
-		expect(subscriber).toHaveBeenCalledTimes(1) // Not skipped (increase of 5)
-		expect(subscriber).toHaveBeenCalledWith(17, 12)
+		deepStrictEqual(skipFn.mock.calls[1].arguments, [17, 12])
+		strictEqual(subscriber.mock.callCount(), 1) // Not skipped (increase of 5)
+		deepStrictEqual(subscriber.mock.calls[0].arguments, [17, 12])
 
 		atom.value = 18
-		expect(skipFn).toHaveBeenCalledWith(18, 17)
-		expect(subscriber).toHaveBeenCalledTimes(1) // Skipped (increase of 1)
+		deepStrictEqual(skipFn.mock.calls[2].arguments, [18, 17])
+		strictEqual(subscriber.mock.callCount(), 1) // Skipped (increase of 1)
 	})
 
 	test('different atoms are independent', () => {
 		const atom1 = makeAtom('a')
 		const atom2 = makeAtom('b')
 
-		const sub1 = vi.fn()
-		const sub2 = vi.fn()
+		const sub1 = mock.fn()
+		const sub2 = mock.fn()
 
 		atom1.sub(sub1, { defer: true })
 		atom2.sub(sub2, { defer: true })
 
 		atom1.value = 'a-updated'
-		expect(sub1).toHaveBeenCalledWith('a-updated', 'a')
-		expect(sub2).not.toHaveBeenCalled()
+		deepStrictEqual(sub1.mock.calls[0].arguments, ['a-updated', 'a'])
+		strictEqual(sub2.mock.callCount(), 0)
 
 		atom2.value = 'b-updated'
-		expect(sub1).toHaveBeenCalledTimes(1)
-		expect(sub2).toHaveBeenCalledWith('b-updated', 'b')
+		strictEqual(sub1.mock.callCount(), 1)
+		deepStrictEqual(sub2.mock.calls[0].arguments, ['b-updated', 'b'])
 	})
 
 	test('atom value can be complex objects', () => {
@@ -371,7 +373,7 @@ describe('makeAtom', () => {
 			settings: { theme: 'dark' }
 		})
 
-		const subscriber = vi.fn()
+		const subscriber = mock.fn()
 		atom.sub(subscriber, { defer: true })
 
 		const newValue = {
@@ -381,10 +383,10 @@ describe('makeAtom', () => {
 
 		atom.value = newValue
 
-		expect(subscriber).toHaveBeenCalledWith(newValue, {
+		deepStrictEqual(subscriber.mock.calls[0].arguments, [newValue, {
 			users: [{ id: 1, name: 'Alice' }],
 			settings: { theme: 'dark' }
-		})
-		expect(atom.value).toBe(newValue)
+		}])
+		strictEqual(atom.value, newValue)
 	})
 })

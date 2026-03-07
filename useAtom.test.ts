@@ -1,7 +1,7 @@
 import {describe, expect, test, vi} from 'vitest'
 import {act, renderHook} from '@testing-library/react'
-import {type Atom, makeAtom} from './index.ts'
-import {useAtom} from './react.ts'
+import {type Atom, makeAtom} from './index.js'
+import {useAtom} from './react.js'
 import {type SetStateAction, type RefObject, useCallback, useEffect, useRef, useState, useSyncExternalStore, createElement} from 'react'
 import {renderToString} from 'react-dom/server'
 

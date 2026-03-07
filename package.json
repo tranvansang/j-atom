@@ -1,10 +1,11 @@
 {
 	"name": "j-atom",
 	"version": "0.1.0",
+	"type": "module",
 	"scripts": {
-		"prepublishOnly": "npx tsc index.ts react.ts --lib esnext,dom --target esnext --declaration --skipLibCheck --moduleResolution bundler --module esnext",
-		"test": "vitest run *.test.ts",
-		"test:coverage": "vitest run --coverage *.test.ts"
+		"prepublishOnly": "npx tsc",
+		"test": "vitest run useAtom.test.ts && node --test makeAtom.test.ts",
+		"test:coverage": "vitest run --coverage useAtom.test.ts && node --test --experimental-test-coverage makeAtom.test.ts"
 	},
 	"exports": {
 		".": {
@@ -28,6 +29,7 @@
 	],
 	"devDependencies": {
 		"@testing-library/react": "^16.3.0",
+		"@types/node": "^25.3.5",
 		"@types/react": "^19.2.7",
 		"@types/react-dom": "^19.2.3",
 		"@vitest/coverage-v8": "^4.0.14",
