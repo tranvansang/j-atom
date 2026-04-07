@@ -1,6 +1,7 @@
 import {describe, test, mock} from 'node:test'
 import {strictEqual, deepStrictEqual, throws} from 'node:assert/strict'
-import {makeAtom} from './index.js'
+// @ts-ignore
+import {makeAtom} from './index.ts'
 
 describe('makeAtom', () => {
 	test('creates atom with initial value', () => {
@@ -10,8 +11,8 @@ describe('makeAtom', () => {
 		const stringAtom = makeAtom('hello')
 		strictEqual(stringAtom.value, 'hello')
 
-		const objAtom = makeAtom({ foo: 'bar' })
-		deepStrictEqual(objAtom.value, { foo: 'bar' })
+		const objAtom = makeAtom({foo: 'bar'})
+		deepStrictEqual(objAtom.value, {foo: 'bar'})
 	})
 
 	test('creates atom without initial value', () => {
@@ -34,7 +35,7 @@ describe('makeAtom', () => {
 		const atom = makeAtom('initial')
 		const subscriber = mock.fn()
 
-		atom.sub(subscriber, { defer: true })
+		atom.sub(subscriber, {defer: true})
 
 		atom.value = 'updated'
 		strictEqual(subscriber.mock.callCount(), 1)
@@ -51,9 +52,9 @@ describe('makeAtom', () => {
 		const sub2 = mock.fn()
 		const sub3 = mock.fn()
 
-		atom.sub(sub1, { defer: true })
-		atom.sub(sub2, { defer: true })
-		atom.sub(sub3, { defer: true })
+		atom.sub(sub1, {defer: true})
+		atom.sub(sub2, {defer: true})
+		atom.sub(sub3, {defer: true})
 
 		atom.value = 1
 
@@ -66,12 +67,12 @@ describe('makeAtom', () => {
 		const atom = makeAtom('test')
 		const subscriber = mock.fn()
 
-		const unsub = atom.sub(subscriber, { defer: true })
+		const sub = atom.sub(subscriber, {defer: true})
 
 		atom.value = 'first'
 		strictEqual(subscriber.mock.callCount(), 1)
 
-		unsub()
+		sub[Symbol.dispose]()
 
 		atom.value = 'second'
 		strictEqual(subscriber.mock.callCount(), 1) // Not called again
@@ -96,7 +97,7 @@ describe('makeAtom', () => {
 		const atom = makeAtom(100)
 		const subscriber = mock.fn()
 
-		atom.sub(subscriber, { defer: true })
+		atom.sub(subscriber, {defer: true})
 
 		// Should NOT be called immediately
 		strictEqual(subscriber.mock.callCount(), 0)
@@ -111,7 +112,7 @@ describe('makeAtom', () => {
 		const subscriber = mock.fn()
 
 		// Skip even numbers
-		atom.sub(subscriber, { defer: true, skip: (newVal) => newVal % 2 === 0 })
+		atom.sub(subscriber, {defer: true, skip: newVal => newVal % 2 === 0})
 
 		atom.value = 2
 		strictEqual(subscriber.mock.callCount(), 0) // Skipped
@@ -134,7 +135,7 @@ describe('makeAtom', () => {
 
 		// Skip values less than 15
 		atom.sub(subscriber, {
-			skip: (newVal) => newVal < 15
+			skip: newVal => newVal < 15,
 		})
 
 		// Initial call is skipped because 10 < 15
@@ -155,9 +156,9 @@ describe('makeAtom', () => {
 	test('subscriber returning cleanup function', () => {
 		const atom = makeAtom('initial')
 		const cleanup = mock.fn()
-		const subscriber = mock.fn(() => cleanup)
+		const subscriber = mock.fn(() => ({[Symbol.dispose]: cleanup}))
 
-		atom.sub(subscriber, { defer: true })
+		atom.sub(subscriber, {defer: true})
 
 		atom.value = 'first'
 		strictEqual(subscriber.mock.callCount(), 1)
@@ -175,14 +176,14 @@ describe('makeAtom', () => {
 	test('cleanup function called on unsubscribe', () => {
 		const atom = makeAtom(0)
 		const cleanup = mock.fn()
-		const subscriber = mock.fn(() => cleanup)
+		const subscriber = mock.fn(() => ({[Symbol.dispose]: cleanup}))
 
-		const unsub = atom.sub(subscriber, { defer: true })
+		const sub = atom.sub(subscriber, {defer: true})
 
 		atom.value = 1
 		strictEqual(cleanup.mock.callCount(), 0)
 
-		unsub()
+		sub[Symbol.dispose]()
 		strictEqual(cleanup.mock.callCount(), 1)
 
 		// No more cleanups after unsubscribe
@@ -191,12 +192,12 @@ describe('makeAtom', () => {
 	})
 
 	test('setting same reference multiple times', () => {
-		const atom = makeAtom({ count: 0 })
+		const atom = makeAtom({count: 0})
 		const subscriber = mock.fn()
 
-		atom.sub(subscriber, { defer: true })
+		atom.sub(subscriber, {defer: true})
 
-		const obj = { count: 1 }
+		const obj = {count: 1}
 		atom.value = obj
 		strictEqual(subscriber.mock.callCount(), 1)
 
@@ -210,7 +211,7 @@ describe('makeAtom', () => {
 		const atom = makeAtom<string | null | undefined>('initial')
 		const subscriber = mock.fn()
 
-		atom.sub(subscriber, { defer: true })
+		atom.sub(subscriber, {defer: true})
 
 		atom.value = null
 		deepStrictEqual(subscriber.mock.calls[0].arguments, [null, 'initial'])
@@ -229,9 +230,24 @@ describe('makeAtom', () => {
 		const atom = makeAtom(0)
 		const callOrder: number[] = []
 
-		atom.sub(() => { callOrder.push(1) }, { defer: true })
-		atom.sub(() => { callOrder.push(2) }, { defer: true })
-		atom.sub(() => { callOrder.push(3) }, { defer: true })
+		atom.sub(
+			() => {
+				callOrder.push(1)
+			},
+			{defer: true},
+		)
+		atom.sub(
+			() => {
+				callOrder.push(2)
+			},
+			{defer: true},
+		)
+		atom.sub(
+			() => {
+				callOrder.push(3)
+			},
+			{defer: true},
+		)
 
 		atom.value = 1
 
@@ -250,8 +266,8 @@ describe('makeAtom', () => {
 		})
 		const subscriber2 = mock.fn()
 
-		atom.sub(subscriber1, { defer: true })
-		atom.sub(subscriber2, { defer: true })
+		atom.sub(subscriber1, {defer: true})
+		atom.sub(subscriber2, {defer: true})
 
 		atom.value = 1
 
@@ -277,15 +293,15 @@ describe('makeAtom', () => {
 
 	test('subscriber can unsubscribe itself', () => {
 		const atom = makeAtom(0)
-		let unsub: (() => void) | null = null
+		let sub: Disposable | null = null
 
 		const subscriber = mock.fn(() => {
-			if (atom.value === 2 && unsub) {
-				unsub()
+			if (atom.value === 2 && sub) {
+				sub[Symbol.dispose]()
 			}
 		})
 
-		unsub = atom.sub(subscriber, { defer: true })
+		sub = atom.sub(subscriber, {defer: true})
 
 		atom.value = 1
 		strictEqual(subscriber.mock.callCount(), 1)
@@ -306,12 +322,17 @@ describe('makeAtom', () => {
 		})
 		const sub3 = mock.fn()
 
-		atom.sub(sub1, { defer: true })
-		atom.sub(sub2, { defer: true })
-		atom.sub(sub3, { defer: true })
+		atom.sub(sub1, {defer: true})
+		atom.sub(sub2, {defer: true})
+		atom.sub(sub3, {defer: true})
 
 		// The error will propagate and stop iteration
-		throws(() => { atom.value = 'updated' }, { message: 'Subscriber error' })
+		throws(
+			() => {
+				atom.value = 'updated'
+			},
+			{message: 'Subscriber error'},
+		)
 
 		// sub1 is called before the error
 		deepStrictEqual(sub1.mock.calls[0].arguments, ['updated', 'test'])
@@ -332,7 +353,7 @@ describe('makeAtom', () => {
 			return newVal - oldVal < 5
 		})
 
-		atom.sub(subscriber, { defer: true, skip: skipFn })
+		atom.sub(subscriber, {defer: true, skip: skipFn})
 
 		atom.value = 12
 		deepStrictEqual(skipFn.mock.calls[0].arguments, [12, 10])
@@ -355,8 +376,8 @@ describe('makeAtom', () => {
 		const sub1 = mock.fn()
 		const sub2 = mock.fn()
 
-		atom1.sub(sub1, { defer: true })
-		atom2.sub(sub2, { defer: true })
+		atom1.sub(sub1, {defer: true})
+		atom2.sub(sub2, {defer: true})
 
 		atom1.value = 'a-updated'
 		deepStrictEqual(sub1.mock.calls[0].arguments, ['a-updated', 'a'])
@@ -369,24 +390,30 @@ describe('makeAtom', () => {
 
 	test('atom value can be complex objects', () => {
 		const atom = makeAtom({
-			users: [{ id: 1, name: 'Alice' }],
-			settings: { theme: 'dark' }
+			users: [{id: 1, name: 'Alice'}],
+			settings: {theme: 'dark'},
 		})
 
 		const subscriber = mock.fn()
-		atom.sub(subscriber, { defer: true })
+		atom.sub(subscriber, {defer: true})
 
 		const newValue = {
-			users: [{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }],
-			settings: { theme: 'light' }
+			users: [
+				{id: 1, name: 'Alice'},
+				{id: 2, name: 'Bob'},
+			],
+			settings: {theme: 'light'},
 		}
 
 		atom.value = newValue
 
-		deepStrictEqual(subscriber.mock.calls[0].arguments, [newValue, {
-			users: [{ id: 1, name: 'Alice' }],
-			settings: { theme: 'dark' }
-		}])
+		deepStrictEqual(subscriber.mock.calls[0].arguments, [
+			newValue,
+			{
+				users: [{id: 1, name: 'Alice'}],
+				settings: {theme: 'dark'},
+			},
+		])
 		strictEqual(atom.value, newValue)
 	})
 })

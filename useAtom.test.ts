@@ -69,7 +69,10 @@ describe('useAtom', () => {
 
 			function useTestAtom(atom: Atom<number>) {
 				const [state, setState] = useState(atom.value)
-				useEffect(() => atom.sub(setState, { defer: true }), [atom])
+				useEffect(() => {
+					const sub = atom.sub(setState, { defer: true })
+					return () => sub[Symbol.dispose]()
+				}, [atom])
 				return state
 			}
 
@@ -84,7 +87,10 @@ describe('useAtom', () => {
 
 			function useTestAtom(atom: Atom<number>) {
 				const [state, setState] = useState(atom.value)
-				useEffect(() => atom.sub(setState, { defer: true }), [atom])
+				useEffect(() => {
+					const sub = atom.sub(setState, { defer: true })
+					return () => sub[Symbol.dispose]()
+				}, [atom])
 				if (!inited) {
 					atom.value = 1
 					inited = true
@@ -101,10 +107,10 @@ describe('useAtom', () => {
 			function useTestAtom(atom: Atom<number>) {
 				const [state, setState, ref] = useRefState(atom.value)
 				useEffect(() => {
-					const unsub = atom.sub(setState, { defer: true })
+					const sub = atom.sub(setState, { defer: true })
 					// value might be updated before the first effect
 					if (ref.current !== atom.value) setState(atom.value)
-					return unsub
+					return () => sub[Symbol.dispose]()
 				}, [atom, ref, setState])
 				if (!inited) {
 					atom.value = 1
@@ -120,7 +126,7 @@ describe('useAtom', () => {
 			expect(result.current).toBe(1)
 
 			function useTestAtom(atom: Atom<number>) {
-				const state = useSyncExternalStore(atom.sub, () => atom.value, () => atom.value)
+				const state = useSyncExternalStore(cb => { const s = atom.sub(cb); return () => s[Symbol.dispose]() }, () => atom.value, () => atom.value)
 				if (!inited) {
 					atom.value = 1
 					inited = true
@@ -135,7 +141,7 @@ describe('useAtom', () => {
 			expect(result.current).toBe(1)
 
 			function useTestAtom(atom: Atom<number>) {
-				const state = useSyncExternalStore(atom.sub, () => atom.value)
+				const state = useSyncExternalStore(cb => { const s = atom.sub(cb); return () => s[Symbol.dispose]() }, () => atom.value)
 				if (!inited) {
 					atom.value = 1
 					inited = true
@@ -178,7 +184,10 @@ describe('useAtom', () => {
 			function useTestAtom(atom: Atom<number>) {
 				cnt++
 				const [state, setState] = useState(atom.value)
-				useEffect(() => atom.sub(setState, { defer: true }), [atom])
+				useEffect(() => {
+					const sub = atom.sub(setState, { defer: true })
+					return () => sub[Symbol.dispose]()
+				}, [atom])
 				return state
 			}
 
@@ -230,7 +239,8 @@ describe('useAtom', () => {
 
 			function useTestAtom(atom: Atom<number>) {
 				cnt++
-				return useSyncExternalStore(atom.sub, () => atom.value, () => atom.value)
+				const subscribe = useCallback((cb: () => void) => { const s = atom.sub(cb); return () => s[Symbol.dispose]() }, [atom])
+				return useSyncExternalStore(subscribe, () => atom.value, () => atom.value)
 			}
 		})
 	})
@@ -265,10 +275,12 @@ describe('useAtom', () => {
 		const unsubscribe = vi.fn()
 		atom.sub = vi.fn((cb) => {
 			subscriber(cb)
-			const unsub = originalSub(cb)
-			return () => {
-				unsubscribe()
-				unsub()
+			const sub = originalSub(cb)
+			return {
+				[Symbol.dispose]() {
+					unsubscribe()
+					sub[Symbol.dispose]()
+				},
 			}
 		})
 

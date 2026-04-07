@@ -2,20 +2,23 @@ export interface Atom<T> {
 	get value(): T
 	set value(val: T)
 	sub(
-		subscriber: (val: T, old?: T) => void | (() => void),
-		options?: {defer?: boolean, skip?(val: T, old?: T): boolean}
-	): () => void
+		subscriber: (val: T, old?: T) => void | Disposable,
+		options?: {defer?: boolean; skip?(val: T, old?: T): boolean},
+	): Disposable
 }
 export function makeAtom<T>(): Atom<T | undefined>
 export function makeAtom<T>(initial: T): Atom<T>
 export function makeAtom<T>(initial?: T | undefined) {
 	let value = initial as T
 	let count = 0
-	const subscribers: Record<number, {
-		subscriber: (val: T, old?: T) => void | (() => void)
-		cleanup: void | (() => void)
-		skip?(val: T, old?: T): boolean
-	}> = Object.create(null)
+	const subscribers: Record<
+		number,
+		{
+			subscriber: (val: T, old?: T) => void | Disposable
+			cleanup: void | Disposable
+			skip?(val: T, old?: T): boolean
+		}
+	> = Object.create(null)
 	return {
 		get value() {
 			return value
@@ -25,15 +28,14 @@ export function makeAtom<T>(initial?: T | undefined) {
 			value = val
 			for (const pair of Object.values(subscribers))
 				if (!pair.skip?.(val, old)) {
-					// @ts-ignore - cleanup can be void but optional chaining handles it
-					pair.cleanup?.()
+					pair.cleanup?.[Symbol.dispose]()
 					pair.cleanup = undefined
 					pair.cleanup = pair.subscriber(val, old)
 				}
 		},
 		sub(
-			subscriber: (val: T, old?: T) => void | (() => void),
-			{defer = false, skip}: {defer?: boolean, skip?(val: T, old?: T): boolean} = {}
+			subscriber: (val: T, old?: T) => void | Disposable,
+			{defer = false, skip}: {defer?: boolean; skip?(val: T, old?: T): boolean} = {},
 		) {
 			const id = count++
 			subscribers[id] = {
@@ -41,11 +43,12 @@ export function makeAtom<T>(initial?: T | undefined) {
 				cleanup: !defer && !skip?.(value, undefined) ? subscriber(value, undefined) : undefined,
 				skip,
 			}
-			return () => {
-				// @ts-ignore - cleanup can be void but optional chaining handles it
-				subscribers[id]?.cleanup?.()
-				delete subscribers[id]
+			return {
+				[Symbol.dispose]() {
+					subscribers[id]?.cleanup?.[Symbol.dispose]()
+					delete subscribers[id]
+				},
 			}
-		}
+		},
 	}
 }
